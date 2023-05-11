@@ -21,7 +21,12 @@ This software comes with no warranty and you may use it at your own risk.
     
 ### Options
 -i --input input file path
+
 -o --output output folder path
+
 -e --export module api specifier to place between the struct and struct name i.e struct GAME_API MyStruct 
+
 -s --single place all the struct files in a single Models.h file in the target folder ( without this option the utility will generate one header file per struct )
+
 -c --clear *DANGER!* deletes all files in the folder before output, use with caution
+
