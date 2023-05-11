@@ -148,6 +148,7 @@ static void Generate(FileInfo input, string outputPath, bool singleFile, bool cl
         {
             using (var writer = new StreamWriter(fstream, Encoding.UTF8))
             {
+                writer.WriteLine("#pragma once");
                 writer.WriteLine("#include \"CoreMinimal.h\"");
                
                 
@@ -177,6 +178,7 @@ static void Generate(FileInfo input, string outputPath, bool singleFile, bool cl
             {
                 using (var writer = new StreamWriter(fstream, Encoding.UTF8))
                 {
+                    writer.WriteLine("#pragma once");
                     writer.WriteLine("#include \"CoreMinimal.h\"");
                     
                     foreach (var dep in model.DependsOn)
