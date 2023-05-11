@@ -13,10 +13,11 @@ public static class Utils
         KnownTypes.Add(type);
     }
     
-    public static string DataTypeToStructType(OpenApiSchema prop)
+    public static string DataTypeToStructType(OpenApiSchema prop, ModelDefinition model)
     {
         if (prop.Type == "object")
         {
+            model.DependsOn.Add(prop.Reference.Id);
             if (KnownTypes.Contains(prop.Reference.Id))
             {
                 return "F"+prop.Reference.Id;
@@ -30,7 +31,7 @@ public static class Utils
 
         if (prop.Type == "array")
         {
-            return $"TArray<{DataTypeToStructType(prop.Items)}>";
+            return $"TArray<{DataTypeToStructType(prop.Items, model)}>";
         }
         
         if (prop.Type == "integer")
@@ -74,20 +75,22 @@ public class PropDef
 
 public class ModelDefinition
 {
+    public HashSet<string> DependsOn { get; set; }
     public string ModelName { get; set; }
     public List<PropDef> Properties { get; set; }
+    public string API { get; set; }
 
     public string ToUstruct()
     {
         string ustructDefinition = $"USTRUCT(BlueprintType)\n" +
-                                   $"struct F{ModelName}\n" +
+                                   $"struct {API} F{ModelName}\n" +
                                    $"{{\n" +
-                                   $"GENERATED_BODY()\n" +
+                                   $"\tGENERATED_BODY()\n" +
                                    $"\n";
         foreach (var prop in Properties)
         {
-            ustructDefinition += $"UPROPERTY(BlueprintReadWrite)\n" +
-                                 $"{prop.StructType} {prop.Name};\n" +
+            ustructDefinition += $"\tUPROPERTY(BlueprintReadWrite)\n" +
+                                 $"\t{prop.StructType} {prop.Name};\n" +
                                  $"\n";
         }
 

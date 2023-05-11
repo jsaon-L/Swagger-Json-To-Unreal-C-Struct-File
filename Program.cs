@@ -26,6 +26,11 @@ var outputOption = new Option<string>(new string[] { "--output", "-o" }, "Output
 
 rootCommand.AddOption(outputOption);
 
+var exportApiOption =
+    new Option<string>(new string[] { "--export", "-e" }, "DLL EXPORT API to put before structs i.e GAME_API");
+
+rootCommand.AddOption(exportApiOption);
+
 var singleFileOption = new Option<bool>(new string[] { "--single", "-s" }, 
     description: "Use a single file Models.h for output")
 {
@@ -44,15 +49,15 @@ var clearOutputOption = new Option<bool>(
 
 rootCommand.AddOption(clearOutputOption);
 
-Action<FileInfo, string, bool, bool> handler = (input, output, single, clearOutput) => Generate(input, output, single, clearOutput);
+Action<FileInfo, string, bool, bool, string> handler = (input, output, single, clearOutput, exportApi) => Generate(input, output, single, clearOutput, exportApi);
 
-rootCommand.SetHandler(handler,inputOption,outputOption,singleFileOption, clearOutputOption);
+rootCommand.SetHandler(handler,inputOption,outputOption,singleFileOption, clearOutputOption, exportApiOption);
 
 return rootCommand.InvokeAsync(args).Result;
 
 
 
-static void Generate(FileInfo input, string outputPath, bool singleFile, bool clear)
+static void Generate(FileInfo input, string outputPath, bool singleFile, bool clear, string exportApi)
 {
     Console.WriteLine($"singleFile: {singleFile} clear: {clear}");
     if (input == null)
@@ -110,7 +115,9 @@ static void Generate(FileInfo input, string outputPath, bool singleFile, bool cl
             var currentModel = new ModelDefinition()
             {
                 ModelName = reqBody.Key,
-                Properties = new List<PropDef>()
+                Properties = new List<PropDef>(),
+                DependsOn = new HashSet<string>(),
+                API = exportApi,
             };
             Models.Add(currentModel);
             
@@ -121,7 +128,7 @@ static void Generate(FileInfo input, string outputPath, bool singleFile, bool cl
                 {
                     Name = prop.Key,
                     DataType = prop.Value.Type,
-                    StructType = Utils.DataTypeToStructType(prop.Value)
+                    StructType = Utils.DataTypeToStructType(prop.Value, currentModel)
                 };
                 currentModel.Properties.Add(newProp);
                 Console.WriteLine($"Parsed property {prop.Key} of type {newProp.StructType} for struct {currentModel.ModelName}");
@@ -141,6 +148,18 @@ static void Generate(FileInfo input, string outputPath, bool singleFile, bool cl
         {
             using (var writer = new StreamWriter(fstream, Encoding.UTF8))
             {
+                writer.WriteLine("#include \"CoreMinimal.h\"");
+               
+                
+                var deps = Models.SelectMany(m => m.DependsOn).Distinct().ToList();
+
+                foreach (var dep in deps)
+                {
+                    writer.WriteLine($"#include \"{dep}.h\"");
+                }
+                
+                writer.WriteLine("#include \"Models.generated.h\"\n\n");
+                
                 foreach (var model in Models)
                 {
                     writer.WriteLine(model.ToUstruct());   
@@ -158,6 +177,14 @@ static void Generate(FileInfo input, string outputPath, bool singleFile, bool cl
             {
                 using (var writer = new StreamWriter(fstream, Encoding.UTF8))
                 {
+                    writer.WriteLine("#include \"CoreMinimal.h\"");
+                    
+                    foreach (var dep in model.DependsOn)
+                    {
+                        writer.WriteLine($"#include \"{dep}.h\"");
+                    }
+                    writer.WriteLine($"#include \"{model.ModelName}.generated.h\"\n\n");
+                    
                     writer.WriteLine(model.ToUstruct());
                 }
             }
