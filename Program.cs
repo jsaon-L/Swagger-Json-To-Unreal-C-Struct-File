@@ -26,26 +26,35 @@ var outputOption = new Option<string>(new string[] { "--output", "-o" }, "Output
 
 rootCommand.AddOption(outputOption);
 
-var singleFileOption = new Option<bool>(new string[] { "--single", "-s" }, "Place all the models in a single file");
+var singleFileOption = new Option<bool>(new string[] { "--single", "-s" }, 
+    description: "Use a single file Models.h for output")
+{
+    AllowMultipleArgumentsPerToken = true,
+    Arity = ArgumentArity.Zero,
+};
 
 rootCommand.AddOption(singleFileOption);
-rootCommand.SetHandler((ctx) =>
+
+var clearOutputOption = new Option<bool>(
+    new string[] {"--clear", "-c"}, "Clear output folder before generating, WARNING this may be dangerous")
 {
-    
-});
+    AllowMultipleArgumentsPerToken = true,
+    Arity = ArgumentArity.Zero,
+};
 
-Action<FileInfo, string, bool> handler = (input, output, single) => Generate(input, output, single);
+rootCommand.AddOption(clearOutputOption);
 
-rootCommand.SetHandler(handler,inputOption,outputOption,singleFileOption);
+Action<FileInfo, string, bool, bool> handler = (input, output, single, clearOutput) => Generate(input, output, single, clearOutput);
 
-
+rootCommand.SetHandler(handler,inputOption,outputOption,singleFileOption, clearOutputOption);
 
 return rootCommand.InvokeAsync(args).Result;
 
 
 
-static void Generate(FileInfo input, string outputPath, bool singleFile)
+static void Generate(FileInfo input, string outputPath, bool singleFile, bool clear)
 {
+    Console.WriteLine($"singleFile: {singleFile} clear: {clear}");
     if (input == null)
     {
         Console.Error.WriteLine("Invalid input file, use -h or --help for help");
@@ -67,6 +76,19 @@ static void Generate(FileInfo input, string outputPath, bool singleFile)
         Console.Error.WriteLine("Invalid output directory, could not create");
     }
 
+    if (clear)
+    {
+        Console.WriteLine("Clearing");
+        foreach (var filePath in Directory.GetFiles(outputPath))
+        {
+            if (File.Exists(filePath) && filePath.EndsWith(".h"))
+            {
+                Console.WriteLine($"Deleting {filePath}");
+                File.Delete(filePath);
+            }
+        }
+    }
+
 
     List<ModelDefinition> Models = new List<ModelDefinition>();
     
@@ -76,9 +98,15 @@ static void Generate(FileInfo input, string outputPath, bool singleFile)
 
         foreach (var reqBody in openApiDocument.Components.Schemas)
         {
-            Console.WriteLine($"name: {reqBody.Key}, body: {reqBody.Value.ToString()}");
+            //Console.WriteLine($"name: {reqBody.Key}, body: {reqBody.Value.ToString()}");
             
             Utils.RegisterKnownType(reqBody.Key);
+
+            if (reqBody.Value.Enum.Count > 0)
+            {
+                continue;
+            }
+            
             var currentModel = new ModelDefinition()
             {
                 ModelName = reqBody.Key,
@@ -88,13 +116,15 @@ static void Generate(FileInfo input, string outputPath, bool singleFile)
             
             foreach (var prop in reqBody.Value.Properties)
             {
-                Console.WriteLine($"prop: {prop.Key}, Type: {prop.Value.Type}, Format: {prop.Value.Format}");
-                currentModel.Properties.Add(new PropDef()
+                //Console.WriteLine($"prop: {prop.Key}, Type: {prop.Value.Type}, Format: {prop.Value.Format}");
+                var newProp = new PropDef()
                 {
                     Name = prop.Key,
                     DataType = prop.Value.Type,
                     StructType = Utils.DataTypeToStructType(prop.Value)
-                });
+                };
+                currentModel.Properties.Add(newProp);
+                Console.WriteLine($"Parsed property {prop.Key} of type {newProp.StructType} for struct {currentModel.ModelName}");
             }
         }
     }

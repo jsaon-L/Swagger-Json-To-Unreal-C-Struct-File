@@ -44,7 +44,7 @@ public static class Utils
         }
         
         //floats?
-        if (prop.Type == "float")
+        if (prop.Type == "float" || (prop.Type == "number" && prop.Format == "float"))
         {
             return "float";
         }
