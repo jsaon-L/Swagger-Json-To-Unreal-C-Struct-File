@@ -17,15 +17,19 @@ public static class Utils
     {
         if (prop.Type == "object")
         {
-            model.DependsOn.Add(prop.Reference.Id);
-            if (KnownTypes.Contains(prop.Reference.Id))
+            //fix null
+            if(prop.Reference != null)
             {
-                return "F"+prop.Reference.Id;
-            }
-            else
-            {
-                Console.WriteLine("Encountered type reference before type definition, shouldn't be a problem");
-                return "F"+prop.Reference.Id;
+                model.DependsOn.Add(prop.Reference.Id);
+                if (KnownTypes.Contains(prop.Reference.Id))
+                {
+                    return "F" + prop.Reference.Id;
+                }
+                else
+                {
+                    Console.WriteLine("Encountered type reference before type definition, shouldn't be a problem");
+                    return "F" + prop.Reference.Id;
+                }
             }
         }
 
@@ -49,6 +53,13 @@ public static class Utils
         {
             return "float";
         }
+
+        //in my project number is string type
+        if (prop.Type == "number")
+        {
+            return "FString";
+        }
+
         //strings
         if (prop.Type == "string" && string.IsNullOrWhiteSpace(prop.Format))
         {
