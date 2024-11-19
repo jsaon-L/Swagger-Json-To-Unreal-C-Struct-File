@@ -12,13 +12,13 @@ public static class Utils
     {
         KnownTypes.Add(type);
     }
-    
+
     public static string DataTypeToStructType(OpenApiSchema prop, ModelDefinition model)
     {
         if (prop.Type == "object")
         {
             //fix null
-            if(prop.Reference != null)
+            if (prop.Reference != null)
             {
                 model.DependsOn.Add(prop.Reference.Id);
                 if (KnownTypes.Contains(prop.Reference.Id))
@@ -37,7 +37,7 @@ public static class Utils
         {
             return $"TArray<{DataTypeToStructType(prop.Items, model)}>";
         }
-        
+
         if (prop.Type == "integer")
         {
             return "int";
@@ -47,7 +47,7 @@ public static class Utils
         {
             return "bool";
         }
-        
+
         //floats?
         if (prop.Type == "float" || (prop.Type == "number" && prop.Format == "float"))
         {
@@ -65,7 +65,7 @@ public static class Utils
         {
             return "FString";
         }
-        
+
         //date-time
         if (prop.Type == "string" && prop.Format == "date-time")
         {
@@ -74,14 +74,14 @@ public static class Utils
 
         return "UNKOWN";
     }
-    
+
 }
 
 public class PropDef
 {
     public string Name { get; set; }
     public string DataType { get; set; }
-    public string StructType { get; set;}
+    public string StructType { get; set; }
 }
 
 public class ModelDefinition
@@ -100,9 +100,20 @@ public class ModelDefinition
                                    $"\n";
         foreach (var prop in Properties)
         {
-            ustructDefinition += $"\tUPROPERTY(BlueprintReadWrite)\n" +
-                                 $"\t{prop.StructType} {prop.Name};\n" +
-                                 $"\n";
+            if (prop.Name == "transMap" || prop.StructType == "UNKOWN")
+            {
+                ustructDefinition += $"\t// UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=\"StructData\")\r\n\n" +
+                    $"\t// {prop.StructType} {prop.Name};\n" +
+                    $"\n";
+            }
+            else
+            {
+                ustructDefinition += $"\tUPROPERTY(EditAnywhere, BlueprintReadWrite, Category=\"StructData\")\r\n\n" +
+                    $"\t{prop.StructType} {prop.Name};\n" +
+                    $"\n";
+            }
+
+
         }
 
         ustructDefinition += "};\n\n";
